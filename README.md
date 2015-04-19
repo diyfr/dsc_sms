@@ -13,7 +13,7 @@ Ce montage permet :
 - De permettre via un Raspberry d'interagir avec l'arduino(Port USB)  pour :
   - Récupérer le statut de l'alarme
   - Envoyer / recevoir des SMS(Gateway)
-  - Programmer le ou les numéros des destinataires des notifications dans l'EPROM de l'arduino
+  - Programmer le ou les numéros des destinataires des notifications dans l'EEPROM de l'arduino
 
 Il est totalement indépendant de la supervision puisque l'ensemble utilise le bus des claviers déportés.
 
