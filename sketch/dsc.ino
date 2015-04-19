@@ -17,7 +17,7 @@
 #define SYSTEMREADY 4
 #define SYSTEMARMED 5
 
-String PHONESNUMBERS= "";
+String PHONESNUMBERS= ""; //Programmer dans l'EEPROM via la console 
 // TC35 Var
 SoftwareSerial serialTC35 = SoftwareSerial(rxPin, txPin); 
 
@@ -85,7 +85,7 @@ void initTC35(){
   serialTC35.println("AT+CMGF=1");
   delay(500);
   outputTC35();
-  serialTC35.println("AT+CNMI=2,1,0,0,1");
+  serialTC35.println("AT+CNMI=3,1,0,0,1");
   delay(500);
   outputTC35();
   serialTC35.println("AT^SMGO=1");
@@ -95,8 +95,7 @@ void initTC35(){
   serialTC35.println("AT&W");
   delay(500);
   outputTC35();
-  //TODO: Mettez votre numéro de superviseur
-  SendTextMessage("336XXXXXXXX","Lancement la supervision de l'alarme");
+  SendTextMessage("33651954464","Lancement la supervision de l'alarme");
 }
 
 void loop() {
@@ -107,11 +106,14 @@ void loop() {
     if(inByte == '$') {strIn = ""; prog_mode=true; }
     if (prog_mode) {
       if (inByte == '%') {
+
+        //FORMAT:
+        //PRG:1008:NUMBER$
         if (strIn.substring(0,4) == "PRG:") {
           char separator = ':';
           String command = strIn.substring(4, strIn.length()-1);
           if (command.indexOf(separator) < 0) {
-            Serial.println("ERR:CMD"); // Oups format incorrect
+            Serial.println("ERR:CMD"); // Oups il manque quelque chose
           }
           else {
             int pos = command.substring(0, command.indexOf(separator)).toInt();
@@ -127,16 +129,18 @@ void loop() {
               Serial.println("OK!");
             }
             else
-              Serial.println("ERR:POS"); //La zone d'Eprom doit-être entr 1 et 1023
+              Serial.println("ERR:POS"); // Entre 0 and 1023
           }
         }
         else if (strIn.substring(0,4) == "SMS:"){
-          Serial.print("Send SMS to");
+          Serial.print("Send SMS to +");
           String command = strIn.substring(4, strIn.length()-1);
           String number = command.substring(0, 11);
           Serial.println(number);
-          String message= command.substring(11);
-          SendTextMessage(number,message);
+          Serial.print("Content :");
+          String mess= command.substring(11);
+          Serial.println(mess);
+          SendTextMessage(number,mess);
         }
         else if (strIn.substring(0,4) == "ATM:"){
           Serial.print("Send Command");
@@ -155,9 +159,9 @@ void loop() {
       }
       
       if(inByte == 'V') {
-        activateRandomKey = Hex8(random(256))+Hex8(random(256))+Hex8(random(256))+Hex8(random(256));// Pour etre sur de l'unicité du message        
+        activateRandomKey = Hex8(random(256))+Hex8(random(256))+Hex8(random(256))+Hex8(random(256));        
         Serial.print("SYS:");
-        Serial.print("20150418"); //Firmware version
+        Serial.print("20150418"); 
         Serial.print(":1:");
         Serial.print(PHONESNUMBERS);
         Serial.print(":");
@@ -168,7 +172,7 @@ void loop() {
         Serial.println(printLed());
       }
       if(inByte == 'H') {
-        Serial.println("'$PRG:1008:NUMBERNUMBER%'   NUMERO POUR L'ALARME (EPROM) NUMBER: numero mobile format 336XXXXXXXX");
+        Serial.println("'$PRG:1008:NUMBERNUMBER%'   NUMERO POUR L'ALARME (EEPROM)1008:EEPROM POSITION, NUMBER: numero mobile format 336XXXXXXXX");
         Serial.println("'$SMS:NUMBERMESSAGE%'  ENVOI DE SMS NUMBER: numero mobile format 336XXXXXXXX");
         Serial.println("'$ATM:COMMAND%'        ENVOI DE COMMANDE A LA CARTE");
         Serial.println("T  Test");
@@ -426,17 +430,19 @@ void sendSMS(int action)
 }
  boolean SendTextMessage(String NUMBER, String message)  
  {
-  String action = "AT+CMGS=\"+"+NUMBER+"\"\r";
-  Serial.println(action);
-  serialTC35.print(action);  //"AT+CMGS=\"+336xxxxxxxx\"\r"
-  delay(500);  
-  serialTC35.print(message);  
-  delay(500);  
-  serialTC35.print((char)26);//the ASCII code of the ctrl+z is 26  
-  serialTC35.println();
-  delay(1200);
   outputTC35();
-  Serial.println("SMSSEND: FIN -----------"); 
+  serialTC35.print("AT+CMGS=");
+  serialTC35.print(char(34));
+  //serialTC35.print("+");
+  serialTC35.print(NUMBER);
+  serialTC35.println(char(34));
+  delay(500);  
+  outputTC35();
+  serialTC35.print(message);  
+  serialTC35.print(char(26));//the ASCII code of the ctrl+z is 26  
+  delay(2000);
+  outputTC35();
+  Serial.println("SMSSEND: FIN -----------");
   return true;
 }  
 
