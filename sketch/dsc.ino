@@ -111,7 +111,7 @@ void loop() {
           char separator = ':';
           String command = strIn.substring(4, strIn.length()-1);
           if (command.indexOf(separator) < 0) {
-            Serial.println("ERR:CMD"); // No correct format (missing :)
+            Serial.println("ERR:CMD"); // Oups format incorrect
           }
           else {
             int pos = command.substring(0, command.indexOf(separator)).toInt();
@@ -127,7 +127,7 @@ void loop() {
               Serial.println("OK!");
             }
             else
-              Serial.println("ERR:POS"); // Memory position must be between 0 and 1023
+              Serial.println("ERR:POS"); //La zone d'Eprom doit-être entr 1 et 1023
           }
         }
         else if (strIn.substring(0,4) == "SMS:"){
@@ -155,9 +155,9 @@ void loop() {
       }
       
       if(inByte == 'V') {
-        activateRandomKey = Hex8(random(256))+Hex8(random(256))+Hex8(random(256))+Hex8(random(256));        
+        activateRandomKey = Hex8(random(256))+Hex8(random(256))+Hex8(random(256))+Hex8(random(256));// Pour etre sur de l'unicité du message        
         Serial.print("SYS:");
-        Serial.print("20140709"); //Firmware version
+        Serial.print("20150418"); //Firmware version
         Serial.print(":1:");
         Serial.print(PHONESNUMBERS);
         Serial.print(":");
