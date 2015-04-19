@@ -23,11 +23,9 @@ SoftwareSerial serialTC35 = SoftwareSerial(rxPin, txPin);
 
 String st;
 int inByte;
-int lastSend=99;//0 READY //1 ARMED //2 ALERT //3 SYSTEM
+int lastSend=BOOT;//0 READY //1 ARMED //2 ALERT //3 SYSTEM
 String strIn="";
 boolean prog_mode=false;
-boolean sendsms_mode=false;
-String activateRandomKey="";
 
 byte LedS=0;
 byte LedS2=0;
@@ -51,7 +49,6 @@ void setup() {
   initTC35();
   // GET PHONE NUMBER SAVED FROM EPROM
   int i;
-  randomSeed(analogRead(1)+millis());
   PHONESNUMBERS = "";
   EEPROM.read(1008);
   for (i=0; i<11; i++) {
@@ -59,8 +56,6 @@ void setup() {
   }
   Serial.print("PHONESNUMBERS:");
   Serial.println(PHONESNUMBERS);
-
-
 }
 
 void initDSC(){
@@ -83,17 +78,17 @@ void initTC35(){
   serialTC35.begin(9600);
   delay(1000);
   serialTC35.println("AT+CMGF=1");
-  delay(500);
+  delay(700);
   outputTC35();
   serialTC35.println("AT+CNMI=3,1,0,0,1");
-  delay(500);
+  delay(700);
   outputTC35();
   serialTC35.println("AT^SMGO=1");
-  delay(500);
+  delay(700);
   outputTC35();
   //Save Settings to Modem flash memory permanently
-  serialTC35.println("AT&W");
-  delay(500);
+//  serialTC35.println("AT&W");
+//  delay(500);
   outputTC35();
   SendTextMessage("33651954464","Lancement la supervision de l'alarme");
 }
@@ -103,11 +98,12 @@ void loop() {
   if(Serial.available()) {  
     int inByte = Serial.read();
     strIn += char(inByte);
-    if(inByte == '$') {strIn = ""; prog_mode=true; }
+    if(inByte == '$') {
+      strIn = ""; 
+      prog_mode=true; 
+    }
     if (prog_mode) {
       if (inByte == '%') {
-
-        //FORMAT:
         //PRG:1008:NUMBER$
         if (strIn.substring(0,4) == "PRG:") {
           char separator = ':';
@@ -121,63 +117,56 @@ void loop() {
             int len = bytes.length()/2;
             if (pos >= 0 and pos < 1024) {
               Serial.println("Programming EEPROM (" + String(pos) + ") = "+bytes);
-              int i;
+              int i; 
               for (i=0; i<len; i++) {
                 byte sendb = getVal(bytes[i*2+1]) + (getVal(bytes[i*2]) << 4);
                 EEPROM.write(pos+i, sendb);
               }
               Serial.println("OK!");
-            }
+            }//FIN if pos>0 
             else
               Serial.println("ERR:POS"); // Entre 0 and 1023
-          }
-        }
-        else if (strIn.substring(0,4) == "SMS:"){
-          Serial.print("Send SMS to +");
-          String command = strIn.substring(4, strIn.length()-1);
-          String number = command.substring(0, 11);
-          Serial.println(number);
-          Serial.print("Content :");
-          String mess= command.substring(11);
-          Serial.println(mess);
-          SendTextMessage(number,mess);
-        }
-        else if (strIn.substring(0,4) == "ATM:"){
-          Serial.print("Send Command");
-          String command = strIn.substring(4, strIn.length()-1);
-          serialTC35.println(command);
+          }//FIN IF command separator
+        }//FIN IF PRG
+        
+        if (strIn.substring(0,4) == "SMS:"){
+          String cd = strIn.substring(4, strIn.length()-1);
+          //String number = cd.substring(0, 11);
+          //String mess= cd.substring(11);
+          SendTextMessage(cd.substring(0, 11),cd.substring(11));
+        }// FIN IF SMS
+        
+        if (strIn.substring(0,4) == "ATM:"){
+          Serial.print("Send AT Command");
+          //String comm = strIn.substring(4, strIn.length()-1);
+          serialTC35.println(strIn.substring(4, strIn.length()-1));
           outputTC35();
-        }      
-      strIn = "";
-      prog_mode = false;      
-      }      
-    }
+        }// FIN ATM
+        
+        strIn = "";
+        prog_mode = false;      
+      }//FIN if inByte == '%'      
+    }//FIN IF prog_mode
     else {
-
-      if(inByte == 'T') {
-        Serial.print("SYS:STATUS:1");
-      }
-      
-      if(inByte == 'V') {
-        activateRandomKey = Hex8(random(256))+Hex8(random(256))+Hex8(random(256))+Hex8(random(256));        
+      if(inByte == 'S') {
         Serial.print("SYS:");
         Serial.print("20150418"); 
         Serial.print(":1:");
         Serial.print(PHONESNUMBERS);
-        Serial.print(":");
-        Serial.println(activateRandomKey);
       }
-      
+
       if(inByte == 'L') {
         Serial.println(printLed());
+      }
+      if(inByte == 'E') {
+        Serial.println("SYS:ECHO");
       }
       if(inByte == 'H') {
         Serial.println("'$PRG:1008:NUMBERNUMBER%'   NUMERO POUR L'ALARME (EEPROM)1008:EEPROM POSITION, NUMBER: numero mobile format 336XXXXXXXX");
         Serial.println("'$SMS:NUMBERMESSAGE%'  ENVOI DE SMS NUMBER: numero mobile format 336XXXXXXXX");
         Serial.println("'$ATM:COMMAND%'        ENVOI DE COMMANDE A LA CARTE");
-        Serial.println("T  Test");
-        Serial.println("S  Retourne l'etat du systeme");
-        Serial.println("L  Retourne le statut des Led de l'alarme");
+        Serial.println("'S'  Retourne l'etat du systeme");
+        Serial.println("'L'  Retourne le statut des Led de l'alarme");
       }
     }
   }
@@ -186,18 +175,8 @@ void loop() {
 
   String stc = st; 
   st = "";
-  
+
   int cmd = getData(stc,0);
-  
-  if((!prog_mode) && (strIn.length() > 0)) {
-    int inByte = strIn[0];
-    strIn = strIn.substring(1);
-
-    if(inByte == 'E') {
-      Serial.println("SYS:ECHO");
-    }
-  }  
-
   if (cmd == 0) return;     
 
   if (cmd == 0xa5)
@@ -238,23 +217,23 @@ void loop() {
     LedZoneB=(byte)getData(stc,8+1+8);
     if (StatusLeds != StatusLed()) changedLed();
   }   
-  
+
   if (cmd == 0x27)
   { 
     LedZone=(byte)getData(stc,8+1+8+8+8+8);
     if (StatusLeds != StatusLed()) changedLed();   
   } 
-  
+
   if (cmd == 0x64)
   {
     Serial.println("BEP:"+Hex8(getData(stc,9)));
   }
-  
+
   if (cmd == 0x7F)
   {
     Serial.println("BEP:"+Hex8(getData(stc,9)));
   }  
- 
+
   if ((lastchangedLed != 0) && (((long)millis() - lastchangedLed)  >= 0)) {
     if (ultSentStatusLeds != StatusLed()) {
       Serial.println(printLed());      
@@ -263,17 +242,17 @@ void loop() {
     lastchangedLed = 0;
   }
 }
-  
+
 void changedLed() {
-    StatusLeds = StatusLed();
-    lastchangedLed=(long)millis()+500;    
+  StatusLeds = StatusLed();
+  lastchangedLed=(long)millis()+500;    
 }
 
 void clock() 
 {
-    if (st.length() > 180) return;
-    if (digitalRead(DTA)) st += "1"; 
-    else st += "0";
+  if (st.length() > 180) return;
+  if (digitalRead(DTA)) st += "1"; 
+  else st += "0";
 } 
 
 unsigned long StatusLed()
@@ -313,10 +292,10 @@ String Hex8(int num) {
 
 byte getVal(char c)
 { 
-   if(c >= '0' && c <= '9')
-     return (byte)(c - '0');
-   else
-     return (byte)(c-'A'+10);
+  if(c >= '0' && c <= '9')
+    return (byte)(c - '0');
+  else
+    return (byte)(c-'A'+10);
 }
 
 String printLed()
@@ -340,38 +319,65 @@ String printLed()
   ret += String(LedReady) + String(LedArmed) + String(LedSystem)+"-";
   switch(lastSend)
   {
-   case READY:
-     if (LedSystem !=0 && LedArmed==0){sendSMS(SYSTEMREADY);}//DEFAULT ALARM
-     //if (LedReady==1 && LedArmed==1){sendSMS(ARMING);}
-     if (LedReady==0 && LedArmed!=0){sendSMS(ARMED);}
-     break;
-   case ARMING:
-     if (LedReady==0 && LedArmed==1){sendSMS(ARMED);}
-     break;
-   case ARMED:
-     if (LedReady!=0){sendSMS(READY);}
-     if (LedSystem ==2){sendSMS(ALERT);}
-     if (LedSystem ==1){sendSMS(SYSTEMARMED);}
-     break;
-   case ALERT:
-     if(LedArmed !=1){sendSMS(READY);}
-     break;
-   case SYSTEMREADY:
-     if(LedSystem==0){lastSend=READY;}
-      break;     
-   case SYSTEMARMED:
-     if(LedSystem==0){lastSend=ARMED;}
-     break;
-   default:
-     if(LedArmed==1 && LedReady==0){lastSend=ARMED;}
-     else{lastSend=READY;}
-     break;
-   }
+  case READY:
+    if (LedSystem !=0 && LedArmed==0){
+      sendSMS(SYSTEMREADY);
+    }//DEFAULT ALARM
+    
+    if (LedReady==1 && LedArmed==1){
+      sendSMS(ARMING);
+    }
+    if (LedReady==0 && LedArmed!=0){
+      sendSMS(ARMED);
+    }
+    break;
+  case ARMING:
+    if (LedReady==0 && LedArmed==1){
+      sendSMS(ARMED);
+    }
+    break;
+  case ARMED:
+    if (LedReady!=0){
+      sendSMS(READY);
+    }
+    if (LedSystem ==2){
+      sendSMS(ALERT);
+    }
+    if (LedSystem ==1){
+      sendSMS(SYSTEMARMED);
+    }
+    break;
+  case ALERT:
+    if(LedArmed !=1){
+      sendSMS(READY);
+    }
+    break;
+  case SYSTEMREADY:
+    if(LedSystem==0){
+      lastSend=READY;
+    }
+    break;     
+  case SYSTEMARMED:
+    if(LedSystem==0){
+      lastSend=ARMED;
+    }
+    break;
+  default:
+    if(LedArmed==1 && LedReady==0){
+      lastSend=ARMED;
+    }
+    else{
+      lastSend=READY;
+    }
+    break;
+  }
   byte i;
   byte x = LedZone;
   byte y = LedZoneB;
   short int b = 0;
-  if (LedS2 & 128) {x = LedZoneM;}
+  if (LedS2 & 128) {
+    x = LedZoneM;
+  }
   for(i=0;i<8;i++)
   {
     b=0;
@@ -386,7 +392,7 @@ String printLed()
 
 void sendSMS(int action)
 {
-  String msg="";
+  String msg="Def. Message";
   switch(action)
   {
   case READY:
@@ -399,7 +405,7 @@ void sendSMS(int action)
     msg="Alarme Armee";
     break;
   case ALERT:
-    msg="UGRGENT ALARME DECLENCHEE";
+    msg="URGENT ALARME DECLENCHEE";
     break;
   case SYSTEMARMED:
     msg="Alarme Armee avec Defaut";
@@ -407,29 +413,32 @@ void sendSMS(int action)
   case SYSTEMREADY:
     msg="Alarme Desarmee avec defaut";
     break;
+  default:
+    msg="Action inconnue"+char(action);
+    break;
   }
   Serial.println(msg);
   lastSend = action;
-  int p;
-  String num="";
-
-  for(p=0;p<4;p++)
+  for(int p=0;p<4;p++)
   {
-    int currentPos = (p==0)?0:p*11+1;
-    
-    if ((PHONESNUMBERS.substring(p*11,p*11+2)!="33"))
+    if (p*11+1 >= PHONESNUMBERS.length())
+        break;
+    if ((PHONESNUMBERS.substring(p*11,p*11+2)=="33"))
     {
-      Serial.println(PHONESNUMBERS.substring(p*11,p*11+2));
-     // CE nest pas un numero de telephone
-      break;
+      SendTextMessage(PHONESNUMBERS.substring(p*11,p*11+11),msg);
     }
-    num+=PHONESNUMBERS.substring(p*11,p*11+11);
-    SendTextMessage(num,msg);
-    num="";
+    else
+    {
+        Serial.println("Prob. de num.");
+        break;
+    }
   }
+  return;
 }
- boolean SendTextMessage(String NUMBER, String message)  
- {
+
+boolean SendTextMessage(String NUMBER, String message)  
+{
+  Serial.println("sendSMS to:"+NUMBER+":"+message);
   outputTC35();
   serialTC35.print("AT+CMGS=");
   serialTC35.print(char(34));
@@ -440,28 +449,30 @@ void sendSMS(int action)
   outputTC35();
   serialTC35.print(message);  
   serialTC35.print(char(26));//the ASCII code of the ctrl+z is 26  
-  delay(2000);
+  delay(5000);
   outputTC35();
-  Serial.println("SMSSEND: FIN -----------");
+  Serial.println();
+  Serial.println("SMS END");
   return true;
 }  
 
 void outputTC35(){
- char incoming_char=0;
-   while(serialTC35.available()!=0)
+  char incoming_char=0;
+  while(serialTC35.available()!=0)
+  {
+    incoming_char =char(serialTC35.read());
+    switch (incoming_char)
     {
-      incoming_char =char(serialTC35.read());
-      switch (incoming_char)
-      {
-         case '\n':
-            Serial.println("");
-            break;
-         case '\r':   // discard carriage return
-            Serial.println("");
-            break;
-         default:
-           Serial.print(incoming_char);
-           break;
-      }
+    case '\n':
+      Serial.println();
+      break;
+    case '\r':   // discard carriage return
+      Serial.println();
+      break;
+    default:
+      Serial.print(incoming_char);
+      break;
     }
+  }
 }
+
