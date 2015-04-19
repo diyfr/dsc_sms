@@ -4,10 +4,10 @@ Supervision SMS pour Alarme DSC (1616 et compatibles) à base Arduino+TC35
 .Description en cours de réalisation
 
 #Schema de princiê
-![alt tag](http://github.com/diyfr/dsc_sms/readme/schema.png)
+![alt tag](https://github.com/diyfr/dsc_sms/blob/master/readme/shema.png)
 #Le keybus
-![alt tag](http://github.com/diyfr/dsc_sms/readme/keybus.jpg)
+![alt tag](https://github.com/diyfr/dsc_sms/blob/master/readme/keybus.jpg)
 #Vue intérieure
-![alt tag](http://github.com/diyfr/dsc_sms/readme/int-low.jpg)
+![alt tag](https://github.com/diyfr/dsc_sms/blob/master/readme/int-low.jpg)
 #De l'exterieur
-![alt tag](http://github.com/diyfr/dsc_sms/readme/ext.jpg)
+![alt tag](https://github.com/diyfr/dsc_sms/blob/master/readme/ext.jpg)
